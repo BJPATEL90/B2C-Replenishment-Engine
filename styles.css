@@ -403,3 +403,44 @@ td.numeric {
     gap: 10px;
   }
 }
+
+/* ─── Transfer plan column widths ─────────────────────────────────────────── */
+.sku-cell {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-cell {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hint-cell {
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: #637083;
+}
+
+/* Priority tag colours */
+.tag-p0 { background: #fee2e2; color: #991b1b; }
+.tag-p1 { background: #ffedd5; color: #9a3412; }
+.tag-p2 { background: #fef9c3; color: #854d0e; }
+.tag-excess { background: #f1f5f9; color: #64748b; }
+
+/* Source sufficiency colours */
+.tag-not-req\. { background: #f1f5f9; color: #64748b; }
+.tag-oos        { background: #fee2e2; color: #991b1b; }
+
+/* Replenishment status */
+.tag-urgent     { background: #ffedd5; color: #9a3412; }
+.tag-replenish  { background: #fef9c3; color: #854d0e; }
+.tag-ok         { background: #dcfce7; color: #166534; }

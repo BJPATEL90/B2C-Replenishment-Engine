@@ -57,6 +57,34 @@
     return "OK";
   }
 
+
+  // ── Brand normalisation ────────────────────────────────────────────────
+  const BRAND_MAP = {
+    "manmatters":    "Man Matters",
+    "man matters":   "Man Matters",
+    "littlejoy":     "Little Joys",
+    "littlejoys":    "Little Joys",
+    "little joys":   "Little Joys",
+    "little joy":    "Little Joys",
+    "bebodywise":    "Be Bodywise",
+    "be bodywise":   "Be Bodywise",
+    "rootlabs":      "Root Labs",
+    "root labs":     "Root Labs",
+    "rootlabsusa":   "Root Labs",
+    "root labs usa": "Root Labs",
+    "staysteady":    "Stay Steady",
+    "stay steady":   "Stay Steady"
+  };
+
+  function normaliseBrand(raw) {
+    if (!raw) return "";
+    const key = String(raw).toLowerCase().replace(/\s+/g, "").trim();
+    if (BRAND_MAP[key]) return BRAND_MAP[key];
+    const keySpaced = String(raw).toLowerCase().trim();
+    if (BRAND_MAP[keySpaced]) return BRAND_MAP[keySpaced];
+    return String(raw).trim().replace(/\b\w/g, c => c.toUpperCase());
+  }
+
   function calculateRows(rows) {
     // Rows come pre-calculated from code.gs; we pass them through directly.
     // DOI and status are re-derived here so that changes to the Min/Target DOI
@@ -114,12 +142,12 @@
         sourceSufficiency = "SHORT";
       }
 
-      // Priority = pure DOI bucket (col AA)
+      // Priority = pure DOI bucket: P0 / P1 / P2 / EXCESS
       let priority;
-      if (!hasActivity)        priority = "EXCESS";
-      else if (currentDoi <= 1)          priority = "CRITICAL";
-      else if (currentDoi < minDoi)      priority = "URGENT";
-      else if (currentDoi <= targetDoi)  priority = "HEALTHY";
+      if (!hasActivity)                  priority = "EXCESS";
+      else if (currentDoi <= 1)          priority = "P0";
+      else if (currentDoi < minDoi)      priority = "P1";
+      else if (currentDoi <= targetDoi)  priority = "P2";
       else                               priority = "EXCESS";
 
       const toBePlanned      = Math.min(replenishmentQty, sourceWarehouseStock);
@@ -132,7 +160,7 @@
         depotName:           "B2C",
         skuCode:             row.skuCode        || "",
         productName:         row.productName    || "",
-        brand:               row.brand          || "",
+        brand:               normaliseBrand(row.brand || ""),
         casePack,
         stockOnHand,
         damagedStock,
@@ -207,6 +235,7 @@
   }
 
   function refreshFilterOptions() {
+    // Brands are already normalised by calculateRows; deduplicate and sort
     const brands = [...new Set(state.calculatedRows.map((row) => row.brand).filter(Boolean))].sort();
     populateSelect(els.brandFilter, brands);
   }
@@ -618,13 +647,44 @@
     return /[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
   }
 
+  // ── Download buttons — labels update live as DOI inputs change ──────────
+  function updateDownloadLabels() {
+    const minD    = Math.max(1, numberValue(els.minDoiInput.value) || 3);
+    const targetD = Math.max(minD, numberValue(els.targetDoiInput.value) || 7);
+    document.querySelectorAll("[data-download-status]").forEach((btn) => {
+      const p = btn.getAttribute("data-download-status");
+      if (p === "P0")  btn.textContent = "P0  ≤1 DOI";
+      if (p === "P1")  btn.textContent = `P1  >1 & <${minD} DOI`;
+      if (p === "P2")  btn.textContent = `P2  ≥${minD} & <${targetD} DOI`;
+      if (p === "")    btn.textContent = "Download Filtered";
+    });
+  }
+  updateDownloadLabels();
+
   document.querySelectorAll("[data-download-status]").forEach((button) => {
     button.addEventListener("click", () => {
       const status = button.getAttribute("data-download-status");
-      const rows = status ? state.filteredRows.filter((row) => row.replenishmentStatus === status) : state.filteredRows;
+      const rows = status
+        ? state.filteredRows.filter((row) => row.priority === status)
+        : state.filteredRows;
       exportRows(rows, status || "filtered");
     });
   });
+
+  // ── View toggle ───────────────────────────────────────────────────────────
+  const viewToggleBtn = document.getElementById("viewToggleBtn");
+  if (viewToggleBtn) {
+    viewToggleBtn.addEventListener("click", () => {
+      detailedView = !detailedView;
+      viewToggleBtn.textContent = detailedView ? "Compact View" : "Detailed View";
+      // Swap thead to match active view
+      const thead = document.getElementById("planThead");
+      if (thead) {
+        thead.innerHTML = detailedView ? DETAILED_THEAD : COMPACT_THEAD;
+      }
+      renderTable();
+    });
+  }
 
   els.downloadAllBtn.addEventListener("click", () => exportRows(state.calculatedRows, "all"));
   els.uploadInventoryBtn.addEventListener("click", uploadInventoryFile);
@@ -637,7 +697,12 @@
     els.minDoiInput,
     els.targetDoiInput,
     els.searchInput
-  ].forEach((input) => input.addEventListener("input", applyFilters));
+  ].forEach((input) => input.addEventListener("input", (e) => {
+    applyFilters();
+    if (e.target === els.minDoiInput || e.target === els.targetDoiInput) {
+      updateDownloadLabels();
+    }
+  }));
 
   window.replenishmentEngine = {
     calculateRows,

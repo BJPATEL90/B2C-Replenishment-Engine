@@ -19,6 +19,7 @@
             <button class="ghost" id="uploadInventoryBtn" type="button">Upload FG Report</button>
           </form>
           <button class="ghost" id="refreshBtn" type="button">Refresh</button>
+          <button class="ghost" id="viewToggleBtn" type="button">Detailed View</button>
           <button class="primary" id="downloadAllBtn" type="button">Download All</button>
         </div>
       </header>
@@ -87,9 +88,9 @@
       </section>
 
       <section class="download-panel" aria-label="Download replenishment tables">
-        <button data-download-status="Critical" type="button">Download Critical</button>
-        <button data-download-status="Urgent" type="button">Download Urgent</button>
-        <button data-download-status="Replenishment" type="button">Download Replenishment</button>
+        <button data-download-status="P0" type="button">P0  ≤1 DOI</button>
+        <button data-download-status="P1" type="button">P1  &gt;1 &amp; &lt;3 DOI</button>
+        <button data-download-status="P2" type="button">P2  ≥3 &amp; &lt;7 DOI</button>
         <button data-download-status="" type="button">Download Filtered</button>
       </section>
 
@@ -103,22 +104,15 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead>
+            <thead id="planThead">
               <tr>
                 <th>SKU</th>
                 <th>Product</th>
                 <th>Brand</th>
                 <th>Case Pack</th>
-                <th>SoH</th>
-                <th>SIT</th>
-                <th>Last 30D</th>
-                <th>Last 7D</th>
-                <th>Net Stock</th>
                 <th>Daily Demand</th>
                 <th>Current DOI</th>
                 <th>Status</th>
-                <th>Open Orders</th>
-                <th>Req Qty</th>
                 <th>SL Ambient</th>
                 <th>MH Stock</th>
                 <th>SIT→MH</th>
@@ -132,7 +126,7 @@
             </thead>
             <tbody id="tableBody">
               <tr>
-                <td class="empty" colspan="23">Click Refresh after configuring the Apps Script endpoint.</td>
+                <td class="empty" colspan="16">Click Refresh after configuring the Apps Script endpoint.</td>
               </tr>
             </tbody>
           </table>
