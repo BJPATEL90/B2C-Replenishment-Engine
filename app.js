@@ -13,6 +13,9 @@
   const els = {
     refreshBtn: document.getElementById("refreshBtn"),
     downloadAllBtn: document.getElementById("downloadAllBtn"),
+    uploadForm: document.getElementById("uploadForm"),
+    inventoryFileInput: document.getElementById("inventoryFileInput"),
+    uploadInventoryBtn: document.getElementById("uploadInventoryBtn"),
     destinationFilter: document.getElementById("destinationFilter"),
     brandFilter: document.getElementById("brandFilter"),
     statusFilter: document.getElementById("statusFilter"),
@@ -27,7 +30,10 @@
     shortSku: document.getElementById("shortSku"),
     lastUpdated: document.getElementById("lastUpdated"),
     dataState: document.getElementById("dataState"),
-    tableBody: document.getElementById("tableBody")
+    tableBody: document.getElementById("tableBody"),
+    processingOverlay: document.getElementById("processingOverlay"),
+    processingTitle: document.getElementById("processingTitle"),
+    processingStatus: document.getElementById("processingStatus")
   };
 
   els.minDoiInput.value = config.defaultMinDoi || 3;
@@ -129,6 +135,16 @@
     els.dataState.style.color = ok ? "#047857" : "#637083";
   }
 
+  function showProcessing(title, status) {
+    els.processingTitle.textContent = title || "Processing";
+    els.processingStatus.textContent = status || "Please wait while the replenishment plan is prepared.";
+    els.processingOverlay.hidden = false;
+  }
+
+  function hideProcessing() {
+    els.processingOverlay.hidden = true;
+  }
+
   function populateSelect(select, values) {
     const selected = select.value;
     const first = select.options[0].cloneNode(true);
@@ -224,7 +240,10 @@
       `Inventory CSV rows: ${diag.inventoryRows || 0}`,
       `Order CSV rows: ${diag.orderRows || 0}`,
       `Inventory emails: ${diag.inventoryThreads || 0}`,
-      `Order emails: ${diag.orderThreads || 0}`
+      `Order emails: ${diag.orderThreads || 0}`,
+      `Inventory links: ${diag.inventoryBodyLinks || 0}`,
+      `Order links: ${diag.orderBodyLinks || 0}`,
+      `Downloaded CSVs: ${(diag.inventoryDownloadedCsv || 0) + (diag.orderDownloadedCsv || 0)}`
     ];
     return `No rows returned. ${parts.join(" | ")}. Check Gmail query, attachment type, and facility/SKU headers.`;
   }
@@ -302,15 +321,9 @@
 
   async function refreshData() {
     try {
+      showProcessing("Refreshing data", "Fetching latest data and preparing the transfer plan.");
       const payload = await fetchRows();
-      state.rawRows = Array.isArray(payload) ? payload : payload.rows || [];
-      state.lastUpdated = payload.lastUpdated || new Date().toISOString();
-      state.diagnostics = payload.diagnostics || null;
-      state.calculatedRows = calculateRows(state.rawRows);
-      refreshFilterOptions();
-      applyFilters();
-      els.lastUpdated.textContent = `Last updated ${new Date(state.lastUpdated).toLocaleString("en-IN")}`;
-      setDataState(`${state.rawRows.length} rows`, true);
+      applyPayload(payload);
     } catch (error) {
       state.rawRows = [];
       state.calculatedRows = [];
@@ -319,7 +332,147 @@
       renderTable();
       els.lastUpdated.textContent = error.message;
       setDataState("Needs setup", false);
+    } finally {
+      hideProcessing();
     }
+  }
+
+  function applyPayload(payload) {
+    if (payload && payload.error) throw new Error(payload.error);
+    state.rawRows = Array.isArray(payload) ? payload : payload.rows || [];
+    state.lastUpdated = payload.lastUpdated || new Date().toISOString();
+    state.diagnostics = payload.diagnostics || null;
+    state.calculatedRows = calculateRows(state.rawRows);
+    refreshFilterOptions();
+    applyFilters();
+    els.lastUpdated.textContent = `Last updated ${new Date(state.lastUpdated).toLocaleString("en-IN")}`;
+    setDataState(`${state.rawRows.length} rows`, true);
+  }
+
+  function uploadInventoryFile() {
+    const file = els.inventoryFileInput.files && els.inventoryFileInput.files[0];
+    if (!file) {
+      window.alert("Select the FG inventory CSV file first.");
+      return;
+    }
+
+    showProcessing("Processing FG report", "Uploading the FG inventory file. The backend will combine it with order sales data and refresh the table.");
+
+    if (window.google && google.script && google.script.run) {
+      uploadInventoryWithGoogleRun(file);
+      return;
+    }
+
+    uploadInventoryWithIframe(file);
+  }
+
+  function uploadInventoryWithGoogleRun(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      google.script.run
+        .withSuccessHandler((payload) => {
+          try {
+            applyPayload(payload);
+          } catch (error) {
+            els.lastUpdated.textContent = error.message;
+            setDataState("Upload failed", false);
+          } finally {
+            hideProcessing();
+          }
+        })
+        .withFailureHandler((error) => {
+          els.lastUpdated.textContent = error.message || String(error);
+          setDataState("Upload failed", false);
+          hideProcessing();
+        })
+        .processUploadedInventoryText(String(reader.result || ""), {
+          fileName: file.name,
+          minDoi: numberValue(els.minDoiInput.value),
+          targetDoi: numberValue(els.targetDoiInput.value)
+        });
+    };
+    reader.onerror = () => {
+      els.lastUpdated.textContent = "Unable to read selected file.";
+      setDataState("Upload failed", false);
+      hideProcessing();
+    };
+    reader.readAsText(file);
+  }
+
+  function uploadInventoryWithIframe(file) {
+    if (!config.apiUrl) {
+      els.lastUpdated.textContent = "Set apiUrl in config.js before uploading files.";
+      setDataState("Needs setup", false);
+      hideProcessing();
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => submitInventoryTextWithIframe(file.name, String(reader.result || ""));
+    reader.onerror = () => {
+      els.lastUpdated.textContent = "Unable to read selected file.";
+      setDataState("Upload failed", false);
+      hideProcessing();
+    };
+    reader.readAsText(file);
+  }
+
+  function submitInventoryTextWithIframe(fileName, inventoryText) {
+    const uploadId = `upload_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const iframe = document.createElement("iframe");
+    iframe.name = `uploadFrame_${uploadId}`;
+    iframe.hidden = true;
+    document.body.appendChild(iframe);
+
+    const timeout = setTimeout(() => {
+      cleanup();
+      els.lastUpdated.textContent = "Upload timed out before the backend returned a result.";
+      setDataState("Upload timed out", false);
+      hideProcessing();
+    }, 180000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      window.removeEventListener("message", onMessage);
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    }
+
+    function onMessage(event) {
+      const data = event.data || {};
+      if (!data || data.type !== "replenishmentUploadResult" || data.uploadId !== uploadId) return;
+      cleanup();
+      try {
+        if (data.error) throw new Error(data.error);
+        applyPayload(data.payload);
+      } catch (error) {
+        els.lastUpdated.textContent = error.message;
+        setDataState("Upload failed", false);
+      } finally {
+        hideProcessing();
+      }
+    }
+
+    window.addEventListener("message", onMessage);
+    setHiddenField("action", "uploadInventory");
+    setHiddenField("uploadId", uploadId);
+    setHiddenField("minDoi", els.minDoiInput.value);
+    setHiddenField("targetDoi", els.targetDoiInput.value);
+    setHiddenField("inventoryFileName", fileName);
+    setHiddenField("inventoryFileContent", inventoryText);
+    els.uploadForm.action = config.apiUrl;
+    els.uploadForm.target = iframe.name;
+    els.uploadForm.submit();
+  }
+
+  function setHiddenField(name, value) {
+    let input = els.uploadForm.querySelector(`input[name="${name}"]`);
+    if (!input) {
+      input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      els.uploadForm.appendChild(input);
+    }
+    input.value = value;
   }
 
   function exportRows(rows, label) {
@@ -385,6 +538,8 @@
   });
 
   els.downloadAllBtn.addEventListener("click", () => exportRows(state.calculatedRows, "all"));
+  els.uploadInventoryBtn.addEventListener("click", uploadInventoryFile);
+  els.uploadForm.addEventListener("submit", (event) => event.preventDefault());
   els.refreshBtn.addEventListener("click", refreshData);
   [
     els.destinationFilter,
@@ -395,8 +550,6 @@
     els.targetDoiInput,
     els.searchInput
   ].forEach((input) => input.addEventListener("input", applyFilters));
-
-  refreshData();
 
   window.replenishmentEngine = {
     calculateRows,

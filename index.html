@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>B2C Replenishment Engine</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="./styles.css?v=20260623-upload">
   </head>
   <body>
     <main class="shell">
@@ -14,6 +14,10 @@
           <h1>Inventory Replenishment Engine</h1>
         </div>
         <div class="topbar-actions">
+          <form class="upload-form" id="uploadForm" method="post" enctype="multipart/form-data">
+            <input id="inventoryFileInput" type="file" accept=".csv,text/csv">
+            <button class="ghost" id="uploadInventoryBtn" type="button">Upload FG Report</button>
+          </form>
           <button class="ghost" id="refreshBtn" type="button">Refresh</button>
           <button class="primary" id="downloadAllBtn" type="button">Download All</button>
         </div>
@@ -135,7 +139,15 @@
       </section>
     </main>
 
-    <script src="config.js"></script>
-    <script src="app.js"></script>
+    <div class="processing-overlay" id="processingOverlay" aria-live="polite" hidden>
+      <div class="processing-dialog" role="status" aria-modal="true">
+        <div class="spinner" aria-hidden="true"></div>
+        <h2 id="processingTitle">Processing</h2>
+        <p id="processingStatus">Please wait while the replenishment plan is prepared.</p>
+      </div>
+    </div>
+
+    <script src="./config.js?v=20260623-upload"></script>
+    <script src="./app.js?v=20260623-upload"></script>
   </body>
 </html>
