@@ -88,10 +88,10 @@
       </section>
 
       <section class="download-panel" aria-label="Download replenishment tables">
-        <button data-download-status="P0" type="button">P0  ≤1 DOI</button>
-        <button data-download-status="P1" type="button">P1  &gt;1 &amp; &lt;3 DOI</button>
-        <button data-download-status="P2" type="button">P2  ≥3 &amp; &lt;7 DOI</button>
-        <button data-download-status="" type="button">Download Filtered</button>
+        <button data-download-status="P0" type="button"><span class="dl-label">P0  ≤1 DOI</span><span class="dl-qty"></span></button>
+        <button data-download-status="P1" type="button"><span class="dl-label">P1  &gt;1 &amp; &lt;3 DOI</span><span class="dl-qty"></span></button>
+        <button data-download-status="P2" type="button"><span class="dl-label">P2  ≥3 &amp; &lt;7 DOI</span><span class="dl-qty"></span></button>
+        <button data-download-status=""   type="button"><span class="dl-label">Download All</span><span class="dl-qty"></span></button>
       </section>
 
       <section class="table-panel">
@@ -106,21 +106,20 @@
           <table>
             <thead id="planThead">
               <tr>
-                <th>SKU</th>
-                <th>Product</th>
+                <th class="col-sku">SKU / Product</th>
                 <th>Brand</th>
-                <th>Case Pack</th>
-                <th>Daily Demand</th>
-                <th>Current DOI</th>
+                <th class="numeric">Case<br>Pack</th>
+                <th class="numeric">Daily<br>Demand</th>
+                <th class="numeric">Current<br>DOI</th>
                 <th>Status</th>
-                <th>SL Ambient</th>
-                <th>MH Stock</th>
-                <th>SIT→MH</th>
-                <th>Source Stock</th>
+                <th class="numeric">SL<br>Ambient</th>
+                <th class="numeric">MH<br>Stock</th>
+                <th class="numeric">SIT<br>→MH</th>
+                <th class="numeric">Source<br>Stock</th>
                 <th>Sufficiency</th>
-                <th>Source Hint</th>
-                <th>To Plan</th>
-                <th>Case Pack Qty</th>
+                <th class="hint-col">Source Hint</th>
+                <th class="numeric">To<br>Plan</th>
+                <th class="numeric">CP<br>Qty</th>
                 <th>Priority</th>
               </tr>
             </thead>
