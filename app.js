@@ -6,7 +6,8 @@
     rawRows: [],
     calculatedRows: [],
     filteredRows: [],
-    lastUpdated: null
+    lastUpdated: null,
+    diagnostics: null
   };
 
   const els = {
@@ -187,7 +188,7 @@
   function renderTable() {
     const rows = state.filteredRows;
     if (!rows.length) {
-      els.tableBody.innerHTML = '<tr><td class="empty" colspan="17">No rows match the selected filters.</td></tr>';
+      els.tableBody.innerHTML = `<tr><td class="empty" colspan="17">${getEmptyMessage()}</td></tr>`;
       return;
     }
 
@@ -212,6 +213,19 @@
         <td class="numeric">${formatNumber(row.toBePlanned, 0)}</td>
       </tr>
     `).join("");
+  }
+
+  function getEmptyMessage() {
+    if (state.rawRows.length) return "No rows match the selected filters.";
+    const diag = state.diagnostics;
+    if (!diag) return "No replenishment rows returned by the backend.";
+    const parts = [
+      `Inventory CSV rows: ${diag.inventoryRows || 0}`,
+      `Order CSV rows: ${diag.orderRows || 0}`,
+      `Inventory emails: ${diag.inventoryThreads || 0}`,
+      `Order emails: ${diag.orderThreads || 0}`
+    ];
+    return `No rows returned. ${parts.join(" | ")}. Check Gmail query, attachment type, and facility/SKU headers.`;
   }
 
   function escapeHtml(value) {
@@ -290,6 +304,7 @@
       const payload = await fetchRows();
       state.rawRows = Array.isArray(payload) ? payload : payload.rows || [];
       state.lastUpdated = payload.lastUpdated || new Date().toISOString();
+      state.diagnostics = payload.diagnostics || null;
       state.calculatedRows = calculateRows(state.rawRows);
       refreshFilterOptions();
       applyFilters();
