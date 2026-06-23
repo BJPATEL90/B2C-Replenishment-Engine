@@ -505,7 +505,7 @@
     const file = els.inventoryFileInput.files && els.inventoryFileInput.files[0];
     if (!file) { window.alert("Select the FG inventory CSV file first."); return; }
     setUploadStatus("Uploading…", "");
-    showProcessing("Processing FG report", "Uploading the FG inventory file. The backend will combine it with order sales data and refresh the table.");
+    showProcessing("Processing FG report", "Uploading the FG inventory file. Please wait Data will be processed and refresh the table.");
     if (window.google && google.script && google.script.run) { uploadInventoryWithGoogleRun(file); return; }
     uploadInventoryWithIframe(file);
   }
