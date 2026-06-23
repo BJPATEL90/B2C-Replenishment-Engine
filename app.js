@@ -276,13 +276,30 @@
     populateSelect(els.brandFilter, brands);
   }
 
+  function compareTransferRows(a, b) {
+    const priorityOrder = { P0: 0, P1: 1, P2: 2, EXCESS: 3 };
+    const pa = Object.prototype.hasOwnProperty.call(priorityOrder, a.priority) ? priorityOrder[a.priority] : 9;
+    const pb = Object.prototype.hasOwnProperty.call(priorityOrder, b.priority) ? priorityOrder[b.priority] : 9;
+    if (pa !== pb) return pa - pb;
+
+    const doiA = Number.isFinite(a.currentDoi) ? a.currentDoi : 999999;
+    const doiB = Number.isFinite(b.currentDoi) ? b.currentDoi : 999999;
+    if (doiA !== doiB) return doiA - doiB;
+
+    const qtyA = Number(a.qtyAsPerCasePack || a.toBePlanned || 0);
+    const qtyB = Number(b.qtyAsPerCasePack || b.toBePlanned || 0);
+    if (qtyA !== qtyB) return qtyB - qtyA;
+
+    return String(a.skuCode || '').localeCompare(String(b.skuCode || ''));
+  }
+
   function applyFilters() {
     const brand  = els.brandFilter.value;
     const status = els.statusFilter.value;
     const source = els.sourceFilter.value;
     const search = els.searchInput.value.trim().toLowerCase();
 
-    state.calculatedRows = calculateRows(state.rawRows);
+    state.calculatedRows = calculateRows(state.rawRows).sort(compareTransferRows);
     state.filteredRows   = state.calculatedRows.filter((row) => {
       const matchesSearch = !search ||
         row.skuCode.toLowerCase().includes(search) ||
@@ -291,7 +308,7 @@
              (!status || row.replenishmentStatus === status) &&
              (!source || row.sourceSufficiency  === source) &&
              matchesSearch;
-    });
+    }).sort(compareTransferRows);
 
     renderSummary();
     updateDownloadPanel();
