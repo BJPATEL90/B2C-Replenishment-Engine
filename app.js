@@ -219,6 +219,7 @@
     if (state.rawRows.length) return "No rows match the selected filters.";
     const diag = state.diagnostics;
     if (!diag) return "No replenishment rows returned by the backend.";
+    if (diag.message) return `Backend message: ${diag.message}`;
     const parts = [
       `Inventory CSV rows: ${diag.inventoryRows || 0}`,
       `Order CSV rows: ${diag.orderRows || 0}`,
