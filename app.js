@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   "use strict";
 
   const config = window.REPLENISHMENT_CONFIG || {};
@@ -10,7 +10,7 @@
     diagnostics: null
   };
 
-  // ── detailedView toggle state ─────────────────────────────────────────────
+  // â”€â”€ detailedView toggle state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let detailedView = false;
 
   const els = {
@@ -44,7 +44,7 @@
   els.minDoiInput.value    = config.defaultMinDoi    || 3;
   els.targetDoiInput.value = config.defaultTargetDoi || 7;
 
-  // ── Utilities ─────────────────────────────────────────────────────────────
+  // â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function numberValue(value) {
     if (value === null || value === undefined || value === "") return 0;
@@ -64,7 +64,7 @@
   }
 
 
-  // ── Toast notifications ───────────────────────────────────────────────────
+  // â”€â”€ Toast notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // type: "success" | "error" | "info"
   function showToast(title, detail, type, durationMs) {
     const container = els.toastContainer;
@@ -76,7 +76,7 @@
         <strong>${escapeHtml(title)}</strong>
         ${detail ? `<span class="toast-detail">${escapeHtml(detail)}</span>` : ""}
       </div>
-      <span class="toast-close" aria-label="Dismiss">✕</span>`;
+      <span class="toast-close" aria-label="Dismiss">âœ•</span>`;
     toast.querySelector(".toast-close").addEventListener("click", () => toast.remove());
     container.appendChild(toast);
     setTimeout(() => { if (toast.parentNode) toast.remove(); }, durationMs || 6000);
@@ -93,7 +93,7 @@
     return `tag-${String(value).toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
   }
 
-  // ── Brand normalisation ───────────────────────────────────────────────────
+  // â”€â”€ Brand normalisation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const BRAND_MAP = {
     "manmatters":    "Man Matters",
@@ -121,7 +121,7 @@
     return String(raw).trim().replace(/\b\w/g, c => c.toUpperCase());
   }
 
-  // ── Row calculation (mirrors Master_Logic formulas) ───────────────────────
+  // â”€â”€ Row calculation (mirrors Master_Logic formulas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function calculateRows(rows) {
     const minDoi    = Math.max(1, numberValue(els.minDoiInput.value) || 3);
@@ -146,7 +146,7 @@
       const dailyDemand   = Math.max(dailySales30, dailySales7);
       const currentDoi    = dailyDemand > 0 ? netDepotStock / dailyDemand : 0;
 
-      // col S — Replenishment Status
+      // col S â€” Replenishment Status
       const hasActivity = last30DaysSales > 0 || last7DaysSales > 0 || openOrders > 0;
       let replenishmentStatus;
       if (!hasActivity)              replenishmentStatus = "Ok";
@@ -155,18 +155,18 @@
       else if (currentDoi < targetDoi) replenishmentStatus = "Replenish";
       else                           replenishmentStatus = "Ok";
 
-      // col U — Replenishment Qty (plain ROUNDUP, no case-pack here)
+      // col U â€” Replenishment Qty (plain ROUNDUP, no case-pack here)
       const rawRequirement   = Math.max(0, targetDoi * dailyDemand - netDepotStock);
       const replenishmentQty = replenishmentStatus === "Ok" ? 0 : Math.ceil(rawRequirement);
 
-      // col Z — Source Sufficiency
+      // col Z â€” Source Sufficiency
       let sourceSufficiency;
       if (replenishmentQty === 0)                             sourceSufficiency = "Not Req.";
       else if (sourceWarehouseStock === 0)                    sourceSufficiency = "OOS";
       else if (replenishmentQty <= sourceWarehouseStock)      sourceSufficiency = "SUFFICIENT";
       else                                                    sourceSufficiency = "SHORT";
 
-      // col AA — Priority (pure DOI bucket)
+      // col AA â€” Priority (pure DOI bucket)
       let priority;
       if (!hasActivity)                  priority = "EXCESS";
       else if (currentDoi <= 1)          priority = "P0";
@@ -174,10 +174,10 @@
       else if (currentDoi <= targetDoi)  priority = "P2";
       else                               priority = "EXCESS";
 
-      // col AB — to be plan
+      // col AB â€” to be plan
       const toBePlanned = Math.min(replenishmentQty, sourceWarehouseStock);
 
-      // col AC — Qty as per case pack: MROUND(toBePlanned/casePack, 1)*casePack
+      // col AC â€” Qty as per case pack: MROUND(toBePlanned/casePack, 1)*casePack
       const qtyAsPerCasePack = Math.round(toBePlanned / casePack) * casePack;
 
       const sourceHint = getSourceHint(replenishmentQty, slAmbientStock, motherHubStock);
@@ -212,7 +212,7 @@
     return "No source stock";
   }
 
-  // ── UI helpers ────────────────────────────────────────────────────────────
+  // â”€â”€ UI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function setDataState(label, ok) {
     els.dataState.textContent = label;
@@ -242,7 +242,7 @@
     select.value = values.includes(selected) ? selected : "";
   }
 
-  // ── Download button labels + bucket qty display ───────────────────────────
+  // â”€â”€ Download button labels + bucket qty display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function updateDownloadPanel() {
     const minD    = Math.max(1, numberValue(els.minDoiInput.value) || 3);
@@ -250,9 +250,9 @@
     const all     = state.calculatedRows;
 
     const buckets = {
-      "P0": { label: `P0  ≤1 DOI`,                     rows: all.filter(r => r.priority === "P0") },
+      "P0": { label: `P0  â‰¤1 DOI`,                     rows: all.filter(r => r.priority === "P0") },
       "P1": { label: `P1  >1 & <${minD} DOI`,           rows: all.filter(r => r.priority === "P1") },
-      "P2": { label: `P2  ≥${minD} & <${targetD} DOI`,  rows: all.filter(r => r.priority === "P2") },
+      "P2": { label: `P2  â‰¥${minD} & <${targetD} DOI`,  rows: all.filter(r => r.priority === "P2") },
       "":   { label: `Download All`,                     rows: all }
     };
 
@@ -269,7 +269,7 @@
     });
   }
 
-  // ── Filters + summary ─────────────────────────────────────────────────────
+  // â”€â”€ Filters + summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function refreshFilterOptions() {
     const brands = [...new Set(state.calculatedRows.map(r => r.brand).filter(Boolean))].sort();
@@ -307,9 +307,9 @@
     els.shortSku.textContent    = formatNumber(rows.filter(r => r.sourceSufficiency === "SHORT" || r.sourceSufficiency === "OOS").length, 0);
   }
 
-  // ── Table rendering ───────────────────────────────────────────────────────
+  // â”€â”€ Table rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // Compact thead (16 cols) — default view
+  // Compact thead (16 cols) â€” default view
   const COMPACT_THEAD = `<tr>
     <th class="col-sku">SKU / Product</th>
     <th>Brand</th>
@@ -319,7 +319,7 @@
     <th>Status</th>
     <th class="numeric">SL<br>Ambient</th>
     <th class="numeric">MH<br>Stock</th>
-    <th class="numeric">SIT<br>→MH</th>
+    <th class="numeric">SIT<br>â†’MH</th>
     <th class="numeric">Source<br>Stock</th>
     <th>Sufficiency</th>
     <th class="hint-col">Source Hint</th>
@@ -328,7 +328,7 @@
     <th>Priority</th>
   </tr>`;
 
-  // Detailed thead (23 cols) — toggled view
+  // Detailed thead (23 cols) â€” toggled view
   const DETAILED_THEAD = `<tr>
     <th class="col-sku">SKU / Product</th>
     <th>Brand</th>
@@ -346,7 +346,7 @@
     <th class="numeric">Req Qty</th>
     <th class="numeric">SL Ambient</th>
     <th class="numeric">MH Stock</th>
-    <th class="numeric">SIT→MH</th>
+    <th class="numeric">SITâ†’MH</th>
     <th class="numeric">Source Stock</th>
     <th>Sufficiency</th>
     <th class="hint-col">Source Hint</th>
@@ -429,7 +429,7 @@
     ].join(" | ") + ". Check Gmail query, attachment type, and facility/SKU headers.";
   }
 
-  // ── Data fetch / upload ───────────────────────────────────────────────────
+  // â”€â”€ Data fetch / upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   async function fetchRows() {
     setDataState("Loading", false);
@@ -438,11 +438,12 @@
         google.script.run
           .withSuccessHandler(resolve)
           .withFailureHandler(reject)
-          .getReplenishmentPlan({ minDoi: numberValue(els.minDoiInput.value), targetDoi: numberValue(els.targetDoiInput.value) });
+          .getPlanData();
       });
     }
     if (!config.apiUrl) throw new Error("Set apiUrl in config.js after deploying the Apps Script web app.");
     const url = new URL(config.apiUrl);
+    url.searchParams.set("action", "loadPlan");
     url.searchParams.set("minDoi", els.minDoiInput.value);
     url.searchParams.set("targetDoi", els.targetDoiInput.value);
     try {
@@ -470,7 +471,7 @@
 
   async function refreshData() {
     try {
-      showProcessing("Refreshing data", "Loading the shared plan from the Google Sheet…");
+      showProcessing("Refreshing data", "Loading the shared plan from the Google Sheetâ€¦");
       const payload = await fetchRows();
       applyPayload(payload);
     } catch (error) {
@@ -494,7 +495,7 @@
 
     // Show where data came from (shared sheet vs fresh upload)
     const fromSheet = payload.diagnostics && payload.diagnostics.sheetRead;
-    const source    = payload.source ? ` — ${payload.source}` : "";
+    const source    = payload.source ? ` â€” ${payload.source}` : "";
     const origin    = fromSheet ? " (shared plan)" : " (fresh upload)";
     els.lastUpdated.textContent =
       `Last updated ${new Date(state.lastUpdated).toLocaleString("en-IN")}${source}${origin}`;
@@ -504,8 +505,8 @@
   function uploadInventoryFile() {
     const file = els.inventoryFileInput.files && els.inventoryFileInput.files[0];
     if (!file) { window.alert("Select the FG inventory CSV file first."); return; }
-    setUploadStatus("Uploading…", "");
-    showProcessing("Processing FG report", "Uploading the FG inventory file. Please wait for a moment Data being processed will take a while.");
+    setUploadStatus("Uploadingâ€¦", "");
+    showProcessing("Processing FG report", "Uploading the FG inventory file. The backend will combine it with order sales data and refresh the table.");
     if (window.google && google.script && google.script.run) { uploadInventoryWithGoogleRun(file); return; }
     uploadInventoryWithIframe(file);
   }
@@ -519,12 +520,12 @@
               applyPayload(payload);
               const rowsLoaded = state.rawRows.length;
               const planned    = state.calculatedRows.reduce((s, r) => s + r.qtyAsPerCasePack, 0);
-              setUploadStatus(`✓ ${rowsLoaded} SKUs loaded`, "ok");
-              showToast(`Upload successful — ${rowsLoaded} SKUs`,
+              setUploadStatus(`âœ“ ${rowsLoaded} SKUs loaded`, "ok");
+              showToast(`Upload successful â€” ${rowsLoaded} SKUs`,
                 `Plan qty: ${new Intl.NumberFormat("en-IN").format(planned)} units`,
                 "success", 8000);
             } catch (e) {
-              setUploadStatus(`✗ ${e.message}`, "err");
+              setUploadStatus(`âœ— ${e.message}`, "err");
               showToast("Upload failed", e.message, "error", 12000);
               els.lastUpdated.textContent = e.message;
               setDataState("Upload failed", false);
@@ -532,7 +533,7 @@
           })
         .withFailureHandler((e) => {
             const msg = e.message || String(e);
-            setUploadStatus(`✗ ${msg}`, "err");
+            setUploadStatus(`âœ— ${msg}`, "err");
             showToast("Upload failed", msg, "error", 12000);
             els.lastUpdated.textContent = msg;
             setDataState("Upload failed", false);
@@ -570,14 +571,17 @@
 
     function cleanup() { clearTimeout(timeout); window.removeEventListener("message", onMessage); if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }
 
-    function onMessage(event) {
+    async function onMessage(event) {
       const data = event.data || {};
       if (!data || data.type !== "replenishmentUploadResult" || data.uploadId !== uploadId) return;
       cleanup();
       try {
         if (data.error) throw new Error(data.error);
-        const rowsBefore = state.rawRows.length;
-        applyPayload(data.payload);
+
+        showProcessing("Loading processed plan", "Upload completed. Loading calculated rows from PLAN_DATA.");
+        const payload = data.payload && data.payload.uploadComplete ? await fetchRows() : data.payload;
+        applyPayload(payload);
+
         const rowsLoaded = state.rawRows.length;
         const planned    = state.calculatedRows.reduce((s, r) => s + r.qtyAsPerCasePack, 0);
         setUploadStatus(`✓ Uploaded — ${rowsLoaded} SKUs loaded`, "ok");
@@ -620,7 +624,7 @@
     document.body.removeChild(form);
   }
 
-  // ── CSV export ────────────────────────────────────────────────────────────
+  // â”€â”€ CSV export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function exportRows(rows, label) {
     const headers = ["Depot Name","SkuCode","Product Name","Brand","Case Pack",
@@ -653,7 +657,7 @@
     return /[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
   }
 
-  // ── Event wiring ──────────────────────────────────────────────────────────
+  // â”€â”€ Event wiring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Download buttons: click downloads filtered by priority bucket
   document.querySelectorAll("[data-download-status]").forEach((btn) => {
@@ -678,7 +682,7 @@
     });
   }
 
-  // Clear Data — wipes browser memory AND the shared PLAN_DATA sheet
+  // Clear Data â€” wipes browser memory AND the shared PLAN_DATA sheet
   if (els.clearDataBtn) {
     els.clearDataBtn.addEventListener("click", async () => {
       const hasData = state.rawRows.length > 0;
@@ -690,8 +694,8 @@
       // Wipe local state immediately
       state.rawRows = []; state.calculatedRows = []; state.filteredRows = [];
       renderSummary(); updateDownloadPanel(); renderTable();
-      els.lastUpdated.textContent = "Clearing shared plan…";
-      setDataState("Clearing…", false);
+      els.lastUpdated.textContent = "Clearing shared planâ€¦";
+      setDataState("Clearingâ€¦", false);
       setUploadStatus("", "");
 
       // Also clear the backend sheet
@@ -704,7 +708,7 @@
         } else if (window.google && google.script && google.script.run) {
           google.script.run.clearPlanSheet_();
         }
-        els.lastUpdated.textContent = "Plan cleared — upload a new FG report to begin.";
+        els.lastUpdated.textContent = "Plan cleared â€” upload a new FG report to begin.";
         setDataState("No data", false);
         showToast("Plan cleared", "The shared sheet has been wiped. Upload a new FG report to reload.", "info", 6000);
       } catch (e) {
@@ -726,3 +730,4 @@
   ].forEach((input) => input.addEventListener("input", applyFilters));
 
 }());
+
