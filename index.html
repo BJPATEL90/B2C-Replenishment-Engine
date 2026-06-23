@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>B2C Replenishment Engine</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">B2C Transfer Planning</p>
+          <h1>Inventory Replenishment Engine</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="ghost" id="refreshBtn" type="button">Refresh</button>
+          <button class="primary" id="downloadAllBtn" type="button">Download All</button>
+        </div>
+      </header>
+
+      <section class="control-strip" aria-label="Planning controls">
+        <label>
+          Destination
+          <select id="destinationFilter">
+            <option value="">All destinations</option>
+          </select>
+        </label>
+        <label>
+          Brand
+          <select id="brandFilter">
+            <option value="">All brands</option>
+          </select>
+        </label>
+        <label>
+          Status
+          <select id="statusFilter">
+            <option value="">All statuses</option>
+            <option value="Critical">Critical</option>
+            <option value="Urgent">Urgent</option>
+            <option value="Replenishment">Replenishment</option>
+            <option value="OK">OK</option>
+          </select>
+        </label>
+        <label>
+          Source
+          <select id="sourceFilter">
+            <option value="">All source states</option>
+            <option value="SUFFICIENT">Sufficient</option>
+            <option value="SHORT">Short</option>
+          </select>
+        </label>
+        <label>
+          Min DOI
+          <input id="minDoiInput" min="0" step="0.5" type="number" value="3">
+        </label>
+        <label>
+          Target DOI
+          <input id="targetDoiInput" min="1" step="0.5" type="number" value="7">
+        </label>
+        <label class="search-box">
+          Search
+          <input id="searchInput" type="search" placeholder="SKU or product">
+        </label>
+      </section>
+
+      <section class="summary-grid" aria-label="Summary">
+        <article>
+          <span>Total SKUs</span>
+          <strong id="totalSku">0</strong>
+        </article>
+        <article>
+          <span>Critical</span>
+          <strong id="criticalSku">0</strong>
+        </article>
+        <article>
+          <span>Urgent</span>
+          <strong id="urgentSku">0</strong>
+        </article>
+        <article>
+          <span>To Be Planned</span>
+          <strong id="plannedQty">0</strong>
+        </article>
+        <article>
+          <span>Short Source</span>
+          <strong id="shortSku">0</strong>
+        </article>
+      </section>
+
+      <section class="download-panel" aria-label="Download replenishment tables">
+        <button data-download-status="Critical" type="button">Download Critical</button>
+        <button data-download-status="Urgent" type="button">Download Urgent</button>
+        <button data-download-status="Replenishment" type="button">Download Replenishment</button>
+        <button data-download-status="" type="button">Download Filtered</button>
+      </section>
+
+      <section class="table-panel">
+        <div class="panel-title">
+          <div>
+            <h2>Transfer Plan</h2>
+            <p id="lastUpdated">Waiting for data</p>
+          </div>
+          <div class="status-pill" id="dataState">Not loaded</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Destination</th>
+                <th>SKU</th>
+                <th>Product</th>
+                <th>Brand</th>
+                <th>Case Pack</th>
+                <th>Net Depot Stock</th>
+                <th>Daily Demand</th>
+                <th>Current DOI</th>
+                <th>Status</th>
+                <th>Req Qty</th>
+                <th>SL Ambient</th>
+                <th>Mother Hub</th>
+                <th>SIT Info</th>
+                <th>Source Stock</th>
+                <th>Source</th>
+                <th>Source Hint</th>
+                <th>To Plan</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr>
+                <td class="empty" colspan="17">Click Refresh after configuring the Apps Script endpoint.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
