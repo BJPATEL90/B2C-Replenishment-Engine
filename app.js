@@ -246,9 +246,43 @@
     const url = new URL(config.apiUrl);
     url.searchParams.set("minDoi", els.minDoiInput.value);
     url.searchParams.set("targetDoi", els.targetDoiInput.value);
-    const response = await fetch(url.toString());
-    if (!response.ok) throw new Error(`Backend returned ${response.status}`);
-    return response.json();
+    try {
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error(`Backend returned ${response.status}`);
+      return response.json();
+    } catch (error) {
+      return fetchRowsJsonp(url);
+    }
+  }
+
+  function fetchRowsJsonp(url) {
+    return new Promise((resolve, reject) => {
+      const callbackName = `replenishmentCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const script = document.createElement("script");
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error("Backend request timed out"));
+      }, 30000);
+
+      function cleanup() {
+        clearTimeout(timer);
+        delete window[callbackName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[callbackName] = (payload) => {
+        cleanup();
+        resolve(payload);
+      };
+
+      url.searchParams.set("callback", callbackName);
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("Unable to load Apps Script backend"));
+      };
+      script.src = url.toString();
+      document.body.appendChild(script);
+    });
   }
 
   async function refreshData() {
