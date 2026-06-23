@@ -76,7 +76,7 @@
         <strong>${escapeHtml(title)}</strong>
         ${detail ? `<span class="toast-detail">${escapeHtml(detail)}</span>` : ""}
       </div>
-      <span class="toast-close" aria-label="Dismiss">âœ•</span>`;
+      <span class="toast-close" aria-label="Dismiss">x</span>`;
     toast.querySelector(".toast-close").addEventListener("click", () => toast.remove());
     container.appendChild(toast);
     setTimeout(() => { if (toast.parentNode) toast.remove(); }, durationMs || 6000);
@@ -146,7 +146,7 @@
       const dailyDemand   = Math.max(dailySales30, dailySales7);
       const currentDoi    = dailyDemand > 0 ? netDepotStock / dailyDemand : 0;
 
-      // col S â€” Replenishment Status
+      // col S - Replenishment Status
       const hasActivity = last30DaysSales > 0 || last7DaysSales > 0 || openOrders > 0;
       let replenishmentStatus;
       if (!hasActivity)              replenishmentStatus = "Ok";
@@ -155,18 +155,18 @@
       else if (currentDoi < targetDoi) replenishmentStatus = "Replenish";
       else                           replenishmentStatus = "Ok";
 
-      // col U â€” Replenishment Qty (plain ROUNDUP, no case-pack here)
+      // col U - Replenishment Qty (plain ROUNDUP, no case-pack here)
       const rawRequirement   = Math.max(0, targetDoi * dailyDemand - netDepotStock);
       const replenishmentQty = replenishmentStatus === "Ok" ? 0 : Math.ceil(rawRequirement);
 
-      // col Z â€” Source Sufficiency
+      // col Z - Source Sufficiency
       let sourceSufficiency;
       if (replenishmentQty === 0)                             sourceSufficiency = "Not Req.";
       else if (sourceWarehouseStock === 0)                    sourceSufficiency = "OOS";
       else if (replenishmentQty <= sourceWarehouseStock)      sourceSufficiency = "SUFFICIENT";
       else                                                    sourceSufficiency = "SHORT";
 
-      // col AA â€” Priority (pure DOI bucket)
+      // col AA - Priority (pure DOI bucket)
       let priority;
       if (!hasActivity)                  priority = "EXCESS";
       else if (currentDoi <= 1)          priority = "P0";
@@ -174,10 +174,10 @@
       else if (currentDoi <= targetDoi)  priority = "P2";
       else                               priority = "EXCESS";
 
-      // col AB â€” to be plan
+      // col AB - to be plan
       const toBePlanned = Math.min(replenishmentQty, sourceWarehouseStock);
 
-      // col AC â€” Qty as per case pack: MROUND(toBePlanned/casePack, 1)*casePack
+      // col AC - Qty as per case pack: MROUND(toBePlanned/casePack, 1)*casePack
       const qtyAsPerCasePack = Math.round(toBePlanned / casePack) * casePack;
 
       const sourceHint = getSourceHint(replenishmentQty, slAmbientStock, motherHubStock);
@@ -250,9 +250,9 @@
     const all     = state.calculatedRows;
 
     const buckets = {
-      "P0": { label: `P0  â‰¤1 DOI`,                     rows: all.filter(r => r.priority === "P0") },
+      "P0": { label: `P0 <=1 DOI`,                     rows: all.filter(r => r.priority === "P0") },
       "P1": { label: `P1  >1 & <${minD} DOI`,           rows: all.filter(r => r.priority === "P1") },
-      "P2": { label: `P2  â‰¥${minD} & <${targetD} DOI`,  rows: all.filter(r => r.priority === "P2") },
+      "P2": { label: `P2 >=${minD} & <${targetD} DOI`,  rows: all.filter(r => r.priority === "P2") },
       "":   { label: `Download All`,                     rows: all }
     };
 
@@ -309,7 +309,7 @@
 
   // â”€â”€ Table rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // Compact thead (16 cols) â€” default view
+  // Compact thead (16 cols) - default view
   const COMPACT_THEAD = `<tr>
     <th class="col-sku">SKU / Product</th>
     <th>Brand</th>
@@ -319,7 +319,7 @@
     <th>Status</th>
     <th class="numeric">SL<br>Ambient</th>
     <th class="numeric">MH<br>Stock</th>
-    <th class="numeric">SIT<br>â†’MH</th>
+    <th class="numeric">SIT<br>to MH</th>
     <th class="numeric">Source<br>Stock</th>
     <th>Sufficiency</th>
     <th class="hint-col">Source Hint</th>
@@ -328,7 +328,7 @@
     <th>Priority</th>
   </tr>`;
 
-  // Detailed thead (23 cols) â€” toggled view
+  // Detailed thead (23 cols) - toggled view
   const DETAILED_THEAD = `<tr>
     <th class="col-sku">SKU / Product</th>
     <th>Brand</th>
@@ -346,7 +346,7 @@
     <th class="numeric">Req Qty</th>
     <th class="numeric">SL Ambient</th>
     <th class="numeric">MH Stock</th>
-    <th class="numeric">SITâ†’MH</th>
+    <th class="numeric">SIT to MH</th>
     <th class="numeric">Source Stock</th>
     <th>Sufficiency</th>
     <th class="hint-col">Source Hint</th>
@@ -471,7 +471,7 @@
 
   async function refreshData() {
     try {
-      showProcessing("Refreshing data", "Loading the shared plan from the Google Sheetâ€¦");
+      showProcessing("Refreshing data", "Loading the shared plan from the Google Sheet...");
       const payload = await fetchRows();
       applyPayload(payload);
     } catch (error) {
@@ -495,7 +495,7 @@
 
     // Show where data came from (shared sheet vs fresh upload)
     const fromSheet = payload.diagnostics && payload.diagnostics.sheetRead;
-    const source    = payload.source ? ` â€” ${payload.source}` : "";
+    const source    = payload.source ? ` - ${payload.source}` : "";
     const origin    = fromSheet ? " (shared plan)" : " (fresh upload)";
     els.lastUpdated.textContent =
       `Last updated ${new Date(state.lastUpdated).toLocaleString("en-IN")}${source}${origin}`;
@@ -505,7 +505,7 @@
   function uploadInventoryFile() {
     const file = els.inventoryFileInput.files && els.inventoryFileInput.files[0];
     if (!file) { window.alert("Select the FG inventory CSV file first."); return; }
-    setUploadStatus("Uploadingâ€¦", "");
+    setUploadStatus("Uploading...", "");
     showProcessing("Processing FG report", "Uploading the FG inventory file. The backend will combine it with order sales data and refresh the table.");
     if (window.google && google.script && google.script.run) { uploadInventoryWithGoogleRun(file); return; }
     uploadInventoryWithIframe(file);
@@ -520,12 +520,12 @@
               applyPayload(payload);
               const rowsLoaded = state.rawRows.length;
               const planned    = state.calculatedRows.reduce((s, r) => s + r.qtyAsPerCasePack, 0);
-              setUploadStatus(`âœ“ ${rowsLoaded} SKUs loaded`, "ok");
-              showToast(`Upload successful â€” ${rowsLoaded} SKUs`,
+              setUploadStatus(`OK ${rowsLoaded} SKUs loaded`, "ok");
+              showToast(`Upload successful - ${rowsLoaded} SKUs`,
                 `Plan qty: ${new Intl.NumberFormat("en-IN").format(planned)} units`,
                 "success", 8000);
             } catch (e) {
-              setUploadStatus(`âœ— ${e.message}`, "err");
+              setUploadStatus(`Error ${e.message}`, "err");
               showToast("Upload failed", e.message, "error", 12000);
               els.lastUpdated.textContent = e.message;
               setDataState("Upload failed", false);
@@ -533,7 +533,7 @@
           })
         .withFailureHandler((e) => {
             const msg = e.message || String(e);
-            setUploadStatus(`âœ— ${msg}`, "err");
+            setUploadStatus(`Error ${msg}`, "err");
             showToast("Upload failed", msg, "error", 12000);
             els.lastUpdated.textContent = msg;
             setDataState("Upload failed", false);
@@ -562,43 +562,75 @@
     iframe.hidden  = true;
     document.body.appendChild(iframe);
 
+    let uploadCompleted = false;
+    let iframeLoadCount = 0;
+
     const timeout = setTimeout(() => {
+      if (uploadCompleted) return;
       cleanup();
       els.lastUpdated.textContent = "Upload timed out before the backend returned a result.";
       setDataState("Upload timed out", false);
       hideProcessing();
     }, 180000);
 
-    function cleanup() { clearTimeout(timeout); window.removeEventListener("message", onMessage); if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }
+    function cleanup() {
+      clearTimeout(timeout);
+      window.removeEventListener("message", onMessage);
+      iframe.onload = null;
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    }
 
-    async function onMessage(event) {
-      const data = event.data || {};
-      if (!data || data.type !== "replenishmentUploadResult" || data.uploadId !== uploadId) return;
-      cleanup();
+    async function finishUpload(payloadFromMessage) {
+      if (uploadCompleted) return;
+      uploadCompleted = true;
       try {
-        if (data.error) throw new Error(data.error);
-
         showProcessing("Loading processed plan", "Upload completed. Loading calculated rows from PLAN_DATA.");
-        const payload = data.payload && data.payload.uploadComplete ? await fetchRows() : data.payload;
+        const payload = payloadFromMessage && !payloadFromMessage.uploadComplete ? payloadFromMessage : await fetchRows();
         applyPayload(payload);
 
         const rowsLoaded = state.rawRows.length;
         const planned    = state.calculatedRows.reduce((s, r) => s + r.qtyAsPerCasePack, 0);
-        setUploadStatus(`✓ Uploaded — ${rowsLoaded} SKUs loaded`, "ok");
+        setUploadStatus(`OK Uploaded - ${rowsLoaded} SKUs loaded`, "ok");
         showToast(
-          `Upload successful — ${rowsLoaded} SKUs`,
+          `Upload successful - ${rowsLoaded} SKUs`,
           `Plan qty: ${new Intl.NumberFormat("en-IN").format(planned)} units  |  File: ${fileName}`,
           "success", 8000
         );
       } catch (e) {
-        setUploadStatus(`✗ ${e.message}`, "err");
-        showToast("Upload failed", e.message, "error", 12000);
+        setUploadStatus(`Error ${e.message}`, "err");
+        showToast("Upload finished, but loading the plan failed", e.message, "error", 12000);
         els.lastUpdated.textContent = e.message;
-        setDataState("Upload failed", false);
+        setDataState("Load failed", false);
       } finally {
+        cleanup();
         hideProcessing();
       }
     }
+
+    async function onMessage(event) {
+      const data = event.data || {};
+      if (!data || data.type !== "replenishmentUploadResult" || data.uploadId !== uploadId) return;
+      if (data.error) {
+        uploadCompleted = true;
+        cleanup();
+        setUploadStatus(`Error ${data.error}`, "err");
+        showToast("Upload failed", data.error, "error", 12000);
+        els.lastUpdated.textContent = data.error;
+        setDataState("Upload failed", false);
+        hideProcessing();
+        return;
+      }
+      await finishUpload(data.payload);
+    }
+
+    iframe.onload = () => {
+      iframeLoadCount += 1;
+      // Apps Script sometimes does not deliver postMessage reliably to a file/GitHub parent.
+      // If the iframe finished loading, assume doPost completed and read PLAN_DATA directly.
+      setTimeout(() => {
+        if (!uploadCompleted && iframeLoadCount > 0) finishUpload({ uploadComplete: true });
+      }, 1200);
+    };
 
     window.addEventListener("message", onMessage);
 
@@ -682,7 +714,7 @@
     });
   }
 
-  // Clear Data â€” wipes browser memory AND the shared PLAN_DATA sheet
+  // Clear Data - wipes browser memory AND the shared PLAN_DATA sheet
   if (els.clearDataBtn) {
     els.clearDataBtn.addEventListener("click", async () => {
       const hasData = state.rawRows.length > 0;
@@ -694,8 +726,8 @@
       // Wipe local state immediately
       state.rawRows = []; state.calculatedRows = []; state.filteredRows = [];
       renderSummary(); updateDownloadPanel(); renderTable();
-      els.lastUpdated.textContent = "Clearing shared planâ€¦";
-      setDataState("Clearingâ€¦", false);
+      els.lastUpdated.textContent = "Clearing shared plan...";
+      setDataState("Clearing...", false);
       setUploadStatus("", "");
 
       // Also clear the backend sheet
@@ -708,7 +740,7 @@
         } else if (window.google && google.script && google.script.run) {
           google.script.run.clearPlanSheet_();
         }
-        els.lastUpdated.textContent = "Plan cleared â€” upload a new FG report to begin.";
+        els.lastUpdated.textContent = "Plan cleared - upload a new FG report to begin.";
         setDataState("No data", false);
         showToast("Plan cleared", "The shared sheet has been wiped. Upload a new FG report to reload.", "info", 6000);
       } catch (e) {
@@ -730,4 +762,5 @@
   ].forEach((input) => input.addEventListener("input", applyFilters));
 
 }());
+
 

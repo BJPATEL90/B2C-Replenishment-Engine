@@ -1,10 +1,10 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>B2C Replenishment Engine</title>
-    <link rel="stylesheet" href="./styles.css?v=20260624-upload-planload">
+    <link rel="stylesheet" href="./styles.css?v=20260624-symbols">
   </head>
   <body>
     <main class="shell">
@@ -90,9 +90,9 @@
       </section>
 
       <section class="download-panel" aria-label="Download replenishment tables">
-        <button data-download-status="P0" type="button"><span class="dl-label">P0  â‰¤1 DOI</span><span class="dl-qty"></span></button>
+        <button data-download-status="P0" type="button"><span class="dl-label">P0 <=1 DOI</span><span class="dl-qty"></span></button>
         <button data-download-status="P1" type="button"><span class="dl-label">P1  &gt;1 &amp; &lt;3 DOI</span><span class="dl-qty"></span></button>
-        <button data-download-status="P2" type="button"><span class="dl-label">P2  â‰¥3 &amp; &lt;7 DOI</span><span class="dl-qty"></span></button>
+        <button data-download-status="P2" type="button"><span class="dl-label">P2 >=3 &amp; &lt;7 DOI</span><span class="dl-qty"></span></button>
         <button data-download-status=""   type="button"><span class="dl-label">Download All</span><span class="dl-qty"></span></button>
       </section>
 
@@ -116,7 +116,7 @@
                 <th>Status</th>
                 <th class="numeric">SL<br>Ambient</th>
                 <th class="numeric">MH<br>Stock</th>
-                <th class="numeric">SIT<br>â†’MH</th>
+                <th class="numeric">SIT<br>to MH</th>
                 <th class="numeric">Source<br>Stock</th>
                 <th>Sufficiency</th>
                 <th class="hint-col">Source Hint</th>
@@ -144,7 +144,7 @@
     </div>
 
     <script src="./config.js?v=20260623-upload"></script>
-    <script src="./app.js?v=20260624-upload-planload"></script>
+    <script src="./app.js?v=20260624-symbols"></script>
     <div id="toastContainer"></div>
   </body>
 </html>
