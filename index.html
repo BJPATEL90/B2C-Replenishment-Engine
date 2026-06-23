@@ -17,8 +17,10 @@
           <form class="upload-form" id="uploadForm" method="post" enctype="multipart/form-data">
             <input id="inventoryFileInput" type="file" accept=".csv,text/csv">
             <button class="ghost" id="uploadInventoryBtn" type="button">Upload FG Report</button>
+            <div class="upload-status" id="uploadStatus"></div>
           </form>
           <button class="ghost" id="refreshBtn" type="button">Refresh</button>
+          <button class="ghost" id="clearDataBtn" type="button" title="Clears the current plan from browser memory. Use when switching to a new FG report.">Clear Data</button>
           <button class="ghost" id="viewToggleBtn" type="button">Detailed View</button>
           <button class="primary" id="downloadAllBtn" type="button">Download All</button>
         </div>
@@ -143,5 +145,6 @@
 
     <script src="./config.js?v=20260623-upload"></script>
     <script src="./app.js?v=20260623-upload"></script>
+    <div id="toastContainer"></div>
   </body>
 </html>

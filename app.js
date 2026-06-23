@@ -35,7 +35,10 @@
     tableBody:         document.getElementById("tableBody"),
     processingOverlay: document.getElementById("processingOverlay"),
     processingTitle:   document.getElementById("processingTitle"),
-    processingStatus:  document.getElementById("processingStatus")
+    processingStatus:  document.getElementById("processingStatus"),
+    uploadStatus:      document.getElementById("uploadStatus"),
+    clearDataBtn:      document.getElementById("clearDataBtn"),
+    toastContainer:    document.getElementById("toastContainer")
   };
 
   els.minDoiInput.value    = config.defaultMinDoi    || 3;
@@ -58,6 +61,32 @@
 
   function escapeHtml(value) {
     return String(value || "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[c]);
+  }
+
+
+  // ── Toast notifications ───────────────────────────────────────────────────
+  // type: "success" | "error" | "info"
+  function showToast(title, detail, type, durationMs) {
+    const container = els.toastContainer;
+    if (!container) return;
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type || "info"}`;
+    toast.innerHTML = `
+      <div class="toast-body">
+        <strong>${escapeHtml(title)}</strong>
+        ${detail ? `<span class="toast-detail">${escapeHtml(detail)}</span>` : ""}
+      </div>
+      <span class="toast-close" aria-label="Dismiss">✕</span>`;
+    toast.querySelector(".toast-close").addEventListener("click", () => toast.remove());
+    container.appendChild(toast);
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, durationMs || 6000);
+  }
+
+  // Shows a small status line directly under the Upload button
+  function setUploadStatus(msg, type) {
+    if (!els.uploadStatus) return;
+    els.uploadStatus.textContent  = msg;
+    els.uploadStatus.className    = `upload-status${type ? " " + type : ""}`;
   }
 
   function tagClass(value) {
@@ -441,7 +470,7 @@
 
   async function refreshData() {
     try {
-      showProcessing("Refreshing data", "Fetching latest data and preparing the transfer plan.");
+      showProcessing("Refreshing data", "Loading the shared plan from the Google Sheet…");
       const payload = await fetchRows();
       applyPayload(payload);
     } catch (error) {
@@ -456,20 +485,27 @@
 
   function applyPayload(payload) {
     if (payload && payload.error) throw new Error(payload.error);
-    state.rawRows       = Array.isArray(payload) ? payload : payload.rows || [];
-    state.lastUpdated   = payload.lastUpdated || new Date().toISOString();
-    state.diagnostics   = payload.diagnostics || null;
+    state.rawRows        = Array.isArray(payload) ? payload : payload.rows || [];
+    state.lastUpdated    = payload.lastUpdated || new Date().toISOString();
+    state.diagnostics    = payload.diagnostics || null;
     state.calculatedRows = calculateRows(state.rawRows);
     refreshFilterOptions();
     applyFilters();
-    els.lastUpdated.textContent = `Last updated ${new Date(state.lastUpdated).toLocaleString("en-IN")}`;
+
+    // Show where data came from (shared sheet vs fresh upload)
+    const fromSheet = payload.diagnostics && payload.diagnostics.sheetRead;
+    const source    = payload.source ? ` — ${payload.source}` : "";
+    const origin    = fromSheet ? " (shared plan)" : " (fresh upload)";
+    els.lastUpdated.textContent =
+      `Last updated ${new Date(state.lastUpdated).toLocaleString("en-IN")}${source}${origin}`;
     setDataState(`${state.rawRows.length} rows`, true);
   }
 
   function uploadInventoryFile() {
     const file = els.inventoryFileInput.files && els.inventoryFileInput.files[0];
     if (!file) { window.alert("Select the FG inventory CSV file first."); return; }
-    showProcessing("Processing FG report", "Uploading the FG inventory file. Please wait tables are loading.");
+    setUploadStatus("Uploading…", "");
+    showProcessing("Processing FG report", "Uploading the FG inventory file. The backend will combine it with order sales data and refresh the table.");
     if (window.google && google.script && google.script.run) { uploadInventoryWithGoogleRun(file); return; }
     uploadInventoryWithIframe(file);
   }
@@ -478,8 +514,30 @@
     const reader = new FileReader();
     reader.onload = () => {
       google.script.run
-        .withSuccessHandler((payload) => { try { applyPayload(payload); } catch (e) { els.lastUpdated.textContent = e.message; setDataState("Upload failed", false); } finally { hideProcessing(); } })
-        .withFailureHandler((e)       => { els.lastUpdated.textContent = e.message || String(e); setDataState("Upload failed", false); hideProcessing(); })
+        .withSuccessHandler((payload) => {
+            try {
+              applyPayload(payload);
+              const rowsLoaded = state.rawRows.length;
+              const planned    = state.calculatedRows.reduce((s, r) => s + r.qtyAsPerCasePack, 0);
+              setUploadStatus(`✓ ${rowsLoaded} SKUs loaded`, "ok");
+              showToast(`Upload successful — ${rowsLoaded} SKUs`,
+                `Plan qty: ${new Intl.NumberFormat("en-IN").format(planned)} units`,
+                "success", 8000);
+            } catch (e) {
+              setUploadStatus(`✗ ${e.message}`, "err");
+              showToast("Upload failed", e.message, "error", 12000);
+              els.lastUpdated.textContent = e.message;
+              setDataState("Upload failed", false);
+            } finally { hideProcessing(); }
+          })
+        .withFailureHandler((e) => {
+            const msg = e.message || String(e);
+            setUploadStatus(`✗ ${msg}`, "err");
+            showToast("Upload failed", msg, "error", 12000);
+            els.lastUpdated.textContent = msg;
+            setDataState("Upload failed", false);
+            hideProcessing();
+          })
         .processUploadedInventoryText(String(reader.result || ""), { fileName: file.name, minDoi: numberValue(els.minDoiInput.value), targetDoi: numberValue(els.targetDoiInput.value) });
     };
     reader.onerror = () => { els.lastUpdated.textContent = "Unable to read selected file."; setDataState("Upload failed", false); hideProcessing(); };
@@ -516,9 +574,26 @@
       const data = event.data || {};
       if (!data || data.type !== "replenishmentUploadResult" || data.uploadId !== uploadId) return;
       cleanup();
-      try { if (data.error) throw new Error(data.error); applyPayload(data.payload); }
-      catch (e) { els.lastUpdated.textContent = e.message; setDataState("Upload failed", false); }
-      finally { hideProcessing(); }
+      try {
+        if (data.error) throw new Error(data.error);
+        const rowsBefore = state.rawRows.length;
+        applyPayload(data.payload);
+        const rowsLoaded = state.rawRows.length;
+        const planned    = state.calculatedRows.reduce((s, r) => s + r.qtyAsPerCasePack, 0);
+        setUploadStatus(`✓ Uploaded — ${rowsLoaded} SKUs loaded`, "ok");
+        showToast(
+          `Upload successful — ${rowsLoaded} SKUs`,
+          `Plan qty: ${new Intl.NumberFormat("en-IN").format(planned)} units  |  File: ${fileName}`,
+          "success", 8000
+        );
+      } catch (e) {
+        setUploadStatus(`✗ ${e.message}`, "err");
+        showToast("Upload failed", e.message, "error", 12000);
+        els.lastUpdated.textContent = e.message;
+        setDataState("Upload failed", false);
+      } finally {
+        hideProcessing();
+      }
     }
 
     window.addEventListener("message", onMessage);
@@ -600,6 +675,44 @@
       const thead = document.getElementById("planThead");
       if (thead) thead.innerHTML = detailedView ? DETAILED_THEAD : COMPACT_THEAD;
       renderTable();
+    });
+  }
+
+  // Clear Data — wipes browser memory AND the shared PLAN_DATA sheet
+  if (els.clearDataBtn) {
+    els.clearDataBtn.addEventListener("click", async () => {
+      const hasData = state.rawRows.length > 0;
+      const msg = hasData
+        ? "This will clear the plan from everyone's view (the shared sheet will be wiped).\nAll team members will need to wait for a new upload. Continue?"
+        : "Clear the shared plan sheet?";
+      if (!window.confirm(msg)) return;
+
+      // Wipe local state immediately
+      state.rawRows = []; state.calculatedRows = []; state.filteredRows = [];
+      renderSummary(); updateDownloadPanel(); renderTable();
+      els.lastUpdated.textContent = "Clearing shared plan…";
+      setDataState("Clearing…", false);
+      setUploadStatus("", "");
+
+      // Also clear the backend sheet
+      try {
+        if (config.apiUrl) {
+          const url = new URL(config.apiUrl);
+          url.searchParams.set("action", "clearPlan");
+          // Use no-cors fetch; we don't need the response body
+          await fetch(url.toString()).catch(() => {});
+        } else if (window.google && google.script && google.script.run) {
+          google.script.run.clearPlanSheet_();
+        }
+        els.lastUpdated.textContent = "Plan cleared — upload a new FG report to begin.";
+        setDataState("No data", false);
+        showToast("Plan cleared", "The shared sheet has been wiped. Upload a new FG report to reload.", "info", 6000);
+      } catch (e) {
+        // Local clear already done; sheet clear is best-effort
+        els.lastUpdated.textContent = "Local data cleared (sheet clear failed: " + e.message + ")";
+        setDataState("No data", false);
+        showToast("Local data cleared", "Sheet could not be cleared: " + e.message, "info", 6000);
+      }
     });
   }
 

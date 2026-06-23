@@ -436,7 +436,8 @@ td.numeric {
 
 /* Hint column — narrower, wrap allowed */
 .hint-col {
-  max-width: 130px;
+  min-width: 110px;
+  max-width: 150px;
   font-size: 12px;
   color: var(--color-text-secondary, #637083);
   white-space: normal;
@@ -487,3 +488,43 @@ td.numeric, th.numeric {
 .tag-urgent    { background: #ffedd5; color: #9a3412; font-weight: 600; }
 .tag-replenish { background: #fef9c3; color: #854d0e; }
 .tag-ok        { background: #dcfce7; color: #166534; }
+
+/* ─── Toast upload status notification ──────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  max-width: 380px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: toast-in 0.2s ease;
+}
+.toast-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.toast-error   { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.toast-info    { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+.toast .toast-body { flex: 1; line-height: 1.4; }
+.toast .toast-detail { display: block; font-size: 11px; font-weight: 400; margin-top: 3px; opacity: 0.8; }
+.toast .toast-close { cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px; opacity: 0.6; }
+.toast .toast-close:hover { opacity: 1; }
+@keyframes toast-in { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ─── Upload status bar under the Upload button ──────────────────────────── */
+.upload-status {
+  font-size: 11px;
+  margin-top: 4px;
+  min-height: 14px;
+  color: var(--color-text-secondary, #637083);
+}
+.upload-status.ok  { color: #166534; }
+.upload-status.err { color: #991b1b; }
+
+/* ─── Detailed view: fix Source Hint col wrapping ───────────────────────── */
+table { table-layout: auto; }
+th, td { vertical-align: middle; }
