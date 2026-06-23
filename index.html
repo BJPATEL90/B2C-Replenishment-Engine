@@ -25,12 +25,6 @@
 
       <section class="control-strip" aria-label="Planning controls">
         <label>
-          Destination
-          <select id="destinationFilter">
-            <option value="">All destinations</option>
-          </select>
-        </label>
-        <label>
           Brand
           <select id="brandFilter">
             <option value="">All brands</option>
@@ -40,10 +34,9 @@
           Status
           <select id="statusFilter">
             <option value="">All statuses</option>
-            <option value="Critical">Critical</option>
             <option value="Urgent">Urgent</option>
-            <option value="Replenishment">Replenishment</option>
-            <option value="OK">OK</option>
+            <option value="Replenish">Replenish</option>
+            <option value="Ok">Ok</option>
           </select>
         </label>
         <label>
@@ -52,6 +45,8 @@
             <option value="">All source states</option>
             <option value="SUFFICIENT">Sufficient</option>
             <option value="SHORT">Short</option>
+            <option value="OOS">OOS</option>
+            <option value="Not Req.">Not Required</option>
           </select>
         </label>
         <label>
@@ -110,28 +105,34 @@
           <table>
             <thead>
               <tr>
-                <th>Destination</th>
                 <th>SKU</th>
                 <th>Product</th>
                 <th>Brand</th>
                 <th>Case Pack</th>
-                <th>Net Depot Stock</th>
+                <th>SoH</th>
+                <th>SIT</th>
+                <th>Last 30D</th>
+                <th>Last 7D</th>
+                <th>Net Stock</th>
                 <th>Daily Demand</th>
                 <th>Current DOI</th>
                 <th>Status</th>
+                <th>Open Orders</th>
                 <th>Req Qty</th>
                 <th>SL Ambient</th>
-                <th>Mother Hub</th>
-                <th>SIT Info</th>
+                <th>MH Stock</th>
+                <th>SIT→MH</th>
                 <th>Source Stock</th>
-                <th>Source</th>
+                <th>Sufficiency</th>
                 <th>Source Hint</th>
                 <th>To Plan</th>
+                <th>Case Pack Qty</th>
+                <th>Priority</th>
               </tr>
             </thead>
             <tbody id="tableBody">
               <tr>
-                <td class="empty" colspan="17">Click Refresh after configuring the Apps Script endpoint.</td>
+                <td class="empty" colspan="23">Click Refresh after configuring the Apps Script endpoint.</td>
               </tr>
             </tbody>
           </table>

@@ -16,7 +16,6 @@
     uploadForm: document.getElementById("uploadForm"),
     inventoryFileInput: document.getElementById("inventoryFileInput"),
     uploadInventoryBtn: document.getElementById("uploadInventoryBtn"),
-    destinationFilter: document.getElementById("destinationFilter"),
     brandFilter: document.getElementById("brandFilter"),
     statusFilter: document.getElementById("statusFilter"),
     sourceFilter: document.getElementById("sourceFilter"),
@@ -59,67 +58,116 @@
   }
 
   function calculateRows(rows) {
-    const minDoi = Math.max(1, numberValue(els.minDoiInput.value) || 3);
+    // Rows come pre-calculated from code.gs; we pass them through directly.
+    // DOI and status are re-derived here so that changes to the Min/Target DOI
+    // sliders in the dashboard take effect without a re-upload.
+    const minDoi    = Math.max(1, numberValue(els.minDoiInput.value) || 3);
     const targetDoi = Math.max(minDoi, numberValue(els.targetDoiInput.value) || 7);
 
     return rows.map((row) => {
-      const stockOnHand = numberValue(row.stockOnHand);
-      const stockInTransfer = numberValue(row.stockInTransfer);
-      const last30DaysSales = numberValue(row.last30DaysSales);
-      const last7DaysSales = numberValue(row.last7DaysSales);
-      const casePack = numberValue(row.casePack) || 1;
-      const netDepotStock = stockOnHand + stockInTransfer;
-      const dailySales30 = last30DaysSales / 30;
-      const dailySales7 = last7DaysSales / 7;
-      const dailyDemand = Math.max(dailySales30, dailySales7);
-      const currentDoi = dailyDemand > 0 ? netDepotStock / dailyDemand : 999;
-      const status = getStatus(currentDoi, minDoi, targetDoi);
-      const rawRequirement = Math.max(0, targetDoi * dailyDemand - netDepotStock);
-      const replenishmentQty = status === "OK" ? 0 : roundUpToCasePack(rawRequirement, casePack);
-      const slAmbientStock = numberValue(row.slAmbientStock);
-      const motherHubStock = numberValue(row.motherHubStock);
-      const sitToMotherHub = numberValue(row.sitToMotherHub);
+      const stockOnHand       = numberValue(row.stockOnHand);
+      const damagedStock      = numberValue(row.damagedStock);
+      const stockInTransfer   = numberValue(row.stockInTransfer);
+      const last30DaysSales   = numberValue(row.last30DaysSales);
+      const last7DaysSales    = numberValue(row.last7DaysSales);
+      const openOrders        = numberValue(row.openOrders);
+      const casePack          = numberValue(row.casePack) || 1;
+      const slAmbientStock    = numberValue(row.slAmbientStock);
+      const motherHubStock    = numberValue(row.motherHubStock);
+      const sitToMhWh         = numberValue(row.sitToMhWh);
       const sourceWarehouseStock = slAmbientStock + motherHubStock;
-      const sourceSufficiency = sourceWarehouseStock >= replenishmentQty ? "SUFFICIENT" : "SHORT";
+
+      const netDepotStock = Math.max(0, stockOnHand + stockInTransfer);
+      const dailySales30  = last30DaysSales / 30;
+      const dailySales7   = last7DaysSales  / 7;
+      const dailyDemand   = Math.max(dailySales30, dailySales7);
+      const currentDoi    = dailyDemand > 0 ? netDepotStock / dailyDemand : 0;
+
+      // Mirror Master_Logic col S status formula
+      const hasActivity = last30DaysSales > 0 || last7DaysSales > 0 || openOrders > 0;
+      let replenishmentStatus;
+      if (!hasActivity) {
+        replenishmentStatus = "Ok";
+      } else if (dailyDemand === 0) {
+        replenishmentStatus = "Urgent";
+      } else if (currentDoi < minDoi) {
+        replenishmentStatus = "Urgent";
+      } else if (currentDoi < targetDoi) {
+        replenishmentStatus = "Replenish";
+      } else {
+        replenishmentStatus = "Ok";
+      }
+
+      // Replenishment Qty = ROUNDUP(MAX(0, targetDoi*demand - netStock), 0)
+      const rawRequirement   = Math.max(0, targetDoi * dailyDemand - netDepotStock);
+      const replenishmentQty = replenishmentStatus === "Ok" ? 0 : Math.ceil(rawRequirement);
+
+      // Source sufficiency mirrors Master_Logic col Z
+      let sourceSufficiency;
+      if (replenishmentQty === 0) {
+        sourceSufficiency = "Not Req.";
+      } else if (sourceWarehouseStock === 0) {
+        sourceSufficiency = "OOS";
+      } else if (replenishmentQty <= sourceWarehouseStock) {
+        sourceSufficiency = "SUFFICIENT";
+      } else {
+        sourceSufficiency = "SHORT";
+      }
+
+      // Priority = pure DOI bucket (col AA)
+      let priority;
+      if (!hasActivity)        priority = "EXCESS";
+      else if (currentDoi <= 1)          priority = "CRITICAL";
+      else if (currentDoi < minDoi)      priority = "URGENT";
+      else if (currentDoi <= targetDoi)  priority = "HEALTHY";
+      else                               priority = "EXCESS";
+
+      const toBePlanned      = Math.min(replenishmentQty, sourceWarehouseStock);
+      // MROUND(toBePlanned / casePack, 1) * casePack
+      const qtyAsPerCasePack = Math.round(toBePlanned / casePack) * casePack;
+
       const sourceHint = getSourceHint(replenishmentQty, slAmbientStock, motherHubStock);
-      const toBePlanned = Math.min(replenishmentQty, sourceWarehouseStock);
 
       return {
-        destination: row.destination || row.depotName || "",
-        skuCode: row.skuCode || "",
-        productName: row.productName || "",
-        brand: row.brand || "",
+        depotName:           "B2C",
+        skuCode:             row.skuCode        || "",
+        productName:         row.productName    || "",
+        brand:               row.brand          || "",
         casePack,
         stockOnHand,
-        damagedStock: numberValue(row.damagedStock),
+        damagedStock,
         stockInTransfer,
         last30DaysSales,
         last7DaysSales,
+        openOrders,
         netDepotStock,
+        dailySales30,
+        dailySales7,
         dailyDemand,
         currentDoi,
-        status,
-        openOrders: numberValue(row.openOrders),
+        replenishmentStatus,
         replenishmentQty,
         slAmbientStock,
         motherHubStock,
-        sitToMotherHub,
+        sitToMhWh,
         sourceWarehouseStock,
         sourceSufficiency,
-        sourceHint,
-        toBePlanned
+        priority,
+        toBePlanned,
+        qtyAsPerCasePack,
+        sourceHint
       };
     });
   }
 
   function getSourceHint(requiredQty, slAmbientStock, motherHubStock) {
-    if (requiredQty <= 0) return "No transfer needed";
-    if (slAmbientStock >= requiredQty) return "SL Ambient";
-    if (motherHubStock >= requiredQty) return "SL Mother Hub";
-    if (slAmbientStock + motherHubStock >= requiredQty) return "Split source";
-    if (slAmbientStock > 0 && motherHubStock > 0) return "Short: both sources";
-    if (slAmbientStock > 0) return "Short: SL Ambient";
-    if (motherHubStock > 0) return "Short: SL Mother Hub";
+    if (requiredQty <= 0)                                         return "No transfer needed";
+    if (slAmbientStock >= requiredQty)                            return "SL Ambient";
+    if (motherHubStock >= requiredQty)                            return "SL Mother Hub";
+    if (slAmbientStock + motherHubStock >= requiredQty)           return "Split source";
+    if (slAmbientStock > 0 && motherHubStock > 0)                 return "Short: both sources";
+    if (slAmbientStock > 0)                                       return "Short: SL Ambient only";
+    if (motherHubStock > 0)                                       return "Short: SL Mother Hub only";
     return "No source stock";
   }
 
@@ -159,14 +207,11 @@
   }
 
   function refreshFilterOptions() {
-    const destinations = [...new Set(state.calculatedRows.map((row) => row.destination).filter(Boolean))].sort();
     const brands = [...new Set(state.calculatedRows.map((row) => row.brand).filter(Boolean))].sort();
-    populateSelect(els.destinationFilter, destinations);
     populateSelect(els.brandFilter, brands);
   }
 
   function applyFilters() {
-    const destination = els.destinationFilter.value;
     const brand = els.brandFilter.value;
     const status = els.statusFilter.value;
     const source = els.sourceFilter.value;
@@ -177,9 +222,8 @@
       const matchesSearch = !search ||
         row.skuCode.toLowerCase().includes(search) ||
         row.productName.toLowerCase().includes(search);
-      return (!destination || row.destination === destination) &&
-        (!brand || row.brand === brand) &&
-        (!status || row.status === status) &&
+      return (!brand || row.brand === brand) &&
+        (!status || row.replenishmentStatus === status) &&
         (!source || row.sourceSufficiency === source) &&
         matchesSearch;
     });
@@ -191,10 +235,10 @@
   function renderSummary() {
     const rows = state.filteredRows;
     els.totalSku.textContent = formatNumber(rows.length, 0);
-    els.criticalSku.textContent = formatNumber(rows.filter((row) => row.status === "Critical").length, 0);
-    els.urgentSku.textContent = formatNumber(rows.filter((row) => row.status === "Urgent").length, 0);
+    els.criticalSku.textContent = formatNumber(rows.filter((row) => row.priority === "CRITICAL").length, 0);
+    els.urgentSku.textContent = formatNumber(rows.filter((row) => row.replenishmentStatus === "Urgent").length, 0);
     els.plannedQty.textContent = formatNumber(rows.reduce((sum, row) => sum + row.toBePlanned, 0), 0);
-    els.shortSku.textContent = formatNumber(rows.filter((row) => row.sourceSufficiency === "SHORT").length, 0);
+    els.shortSku.textContent = formatNumber(rows.filter((row) => row.sourceSufficiency === "SHORT" || row.sourceSufficiency === "OOS").length, 0);
   }
 
   function tagClass(value) {
@@ -210,23 +254,29 @@
 
     els.tableBody.innerHTML = rows.map((row) => `
       <tr>
-        <td>${escapeHtml(row.destination)}</td>
         <td>${escapeHtml(row.skuCode)}</td>
         <td>${escapeHtml(row.productName)}</td>
         <td>${escapeHtml(row.brand)}</td>
         <td class="numeric">${formatNumber(row.casePack, 0)}</td>
+        <td class="numeric">${formatNumber(row.stockOnHand, 0)}</td>
+        <td class="numeric">${formatNumber(row.stockInTransfer, 0)}</td>
+        <td class="numeric">${formatNumber(row.last30DaysSales, 0)}</td>
+        <td class="numeric">${formatNumber(row.last7DaysSales, 0)}</td>
         <td class="numeric">${formatNumber(row.netDepotStock, 0)}</td>
         <td class="numeric">${formatNumber(row.dailyDemand, 1)}</td>
         <td class="numeric">${formatNumber(row.currentDoi, 1)}</td>
-        <td><span class="tag ${tagClass(row.status)}">${row.status}</span></td>
+        <td><span class="tag ${tagClass(row.replenishmentStatus)}">${row.replenishmentStatus}</span></td>
+        <td class="numeric">${formatNumber(row.openOrders, 0)}</td>
         <td class="numeric">${formatNumber(row.replenishmentQty, 0)}</td>
         <td class="numeric">${formatNumber(row.slAmbientStock, 0)}</td>
         <td class="numeric">${formatNumber(row.motherHubStock, 0)}</td>
-        <td class="numeric">${formatNumber(row.sitToMotherHub, 0)}</td>
+        <td class="numeric">${formatNumber(row.sitToMhWh, 0)}</td>
         <td class="numeric">${formatNumber(row.sourceWarehouseStock, 0)}</td>
         <td><span class="tag ${tagClass(row.sourceSufficiency)}">${row.sourceSufficiency}</span></td>
         <td>${escapeHtml(row.sourceHint)}</td>
         <td class="numeric">${formatNumber(row.toBePlanned, 0)}</td>
+        <td class="numeric">${formatNumber(row.qtyAsPerCasePack, 0)}</td>
+        <td><span class="tag ${tagClass(row.priority)}">${row.priority}</span></td>
       </tr>
     `).join("");
   }
@@ -453,15 +503,34 @@
     }
 
     window.addEventListener("message", onMessage);
-    setHiddenField("action", "uploadInventory");
-    setHiddenField("uploadId", uploadId);
-    setHiddenField("minDoi", els.minDoiInput.value);
-    setHiddenField("targetDoi", els.targetDoiInput.value);
-    setHiddenField("inventoryFileName", fileName);
-    setHiddenField("inventoryFileContent", inventoryText);
-    els.uploadForm.action = config.apiUrl;
-    els.uploadForm.target = iframe.name;
-    els.uploadForm.submit();
+
+    // Send metadata as URL query params (small, safe).
+    // Send the CSV as the raw POST body using enctype="text/plain" so that
+    // Apps Script reads it via e.postData.getDataAsString() rather than
+    // e.parameter — this bypasses the ~10 MB e.parameter size limit that
+    // causes 2-5 MB FG reports to arrive truncated or empty.
+    const url = new URL(config.apiUrl);
+    url.searchParams.set("action", "uploadInventory");
+    url.searchParams.set("uploadId", uploadId);
+    url.searchParams.set("minDoi", els.minDoiInput.value);
+    url.searchParams.set("targetDoi", els.targetDoiInput.value);
+    url.searchParams.set("inventoryFileName", fileName);
+
+    const form = document.createElement("form");
+    form.method  = "POST";
+    form.action  = url.toString();
+    form.target  = iframe.name;
+    form.enctype = "text/plain";  // raw body; Apps Script strips "csvBody=" prefix
+
+    const field = document.createElement("input");
+    field.type  = "hidden";
+    field.name  = "csvBody";
+    field.value = inventoryText;
+    form.appendChild(field);
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
   }
 
   function setHiddenField(name, value) {
@@ -477,42 +546,62 @@
 
   function exportRows(rows, label) {
     const headers = [
-      "Destination",
+      "Depot Name",
       "SkuCode",
       "Product Name",
       "Brand",
       "Case Pack",
+      "Stock on Hand",
+      "Damaged Stock",
+      "Stock In Transfer",
+      "Last 30 days Sales",
+      "Last 7 days Sales",
       "Net Depot Stock",
+      "Daily Sales 30D",
+      "Daily Sales 7D",
       "Daily Demand",
       "Current DOI",
       "Replenishment Status",
+      "Open Orders",
       "Replenishment Qty",
-      "SL Ambient Stock",
-      "Mother Hub Stock",
-      "SIT to MH-WH Info",
+      "SL Stock (Ambient)",
+      "MH Stock",
+      "SIT to MH-WH",
       "Source Warehouse Stock",
       "Source Sufficiency",
       "Source Hint",
-      "To Be Planned"
+      "to be plan",
+      "Qty as per Case Pack",
+      "Priority"
     ];
     const csvRows = rows.map((row) => [
-      row.destination,
+      row.depotName,
       row.skuCode,
       row.productName,
       row.brand,
       row.casePack,
+      row.stockOnHand,
+      row.damagedStock,
+      row.stockInTransfer,
+      row.last30DaysSales,
+      row.last7DaysSales,
       row.netDepotStock,
+      row.dailySales30.toFixed(2),
+      row.dailySales7.toFixed(2),
       row.dailyDemand.toFixed(2),
       row.currentDoi.toFixed(2),
-      row.status,
+      row.replenishmentStatus,
+      row.openOrders,
       row.replenishmentQty,
       row.slAmbientStock,
       row.motherHubStock,
-      row.sitToMotherHub,
+      row.sitToMhWh,
       row.sourceWarehouseStock,
       row.sourceSufficiency,
       row.sourceHint,
-      row.toBePlanned
+      row.toBePlanned,
+      row.qtyAsPerCasePack,
+      row.priority
     ]);
     const csv = [headers, ...csvRows].map((line) => line.map(csvCell).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -532,7 +621,7 @@
   document.querySelectorAll("[data-download-status]").forEach((button) => {
     button.addEventListener("click", () => {
       const status = button.getAttribute("data-download-status");
-      const rows = status ? state.filteredRows.filter((row) => row.status === status) : state.filteredRows;
+      const rows = status ? state.filteredRows.filter((row) => row.replenishmentStatus === status) : state.filteredRows;
       exportRows(rows, status || "filtered");
     });
   });
@@ -542,7 +631,6 @@
   els.uploadForm.addEventListener("submit", (event) => event.preventDefault());
   els.refreshBtn.addEventListener("click", refreshData);
   [
-    els.destinationFilter,
     els.brandFilter,
     els.statusFilter,
     els.sourceFilter,
