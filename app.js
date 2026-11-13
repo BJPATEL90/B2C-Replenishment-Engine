@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   "use strict";
 
   const config = window.REPLENISHMENT_CONFIG || {};
@@ -137,8 +137,9 @@
       const casePack             = numberValue(row.casePack) || 1;
       const slAmbientStock       = numberValue(row.slAmbientStock);
       const motherHubStock       = numberValue(row.motherHubStock);
+      const slRxStock            = numberValue(row.slRxStock);
       const sitToMhWh            = numberValue(row.sitToMhWh);
-      const sourceWarehouseStock = slAmbientStock + motherHubStock;
+      const sourceWarehouseStock = slAmbientStock + motherHubStock + slRxStock;
 
       const netDepotStock = Math.max(0, stockOnHand + stockInTransfer);
       const dailySales30  = last30DaysSales / 30;
@@ -180,7 +181,7 @@
       // col AC - Qty as per case pack: MROUND(toBePlanned/casePack, 1)*casePack
       const qtyAsPerCasePack = Math.round(toBePlanned / casePack) * casePack;
 
-      const sourceHint = getSourceHint(replenishmentQty, slAmbientStock, motherHubStock);
+      const sourceHint = getSourceHint(replenishmentQty, slAmbientStock, motherHubStock, slRxStock);
 
       return {
         depotName: "B2C",
@@ -193,7 +194,7 @@
         netDepotStock,      dailySales30,     dailySales7,
         dailyDemand,        currentDoi,
         replenishmentStatus, replenishmentQty,
-        slAmbientStock,     motherHubStock,   sitToMhWh,
+        slAmbientStock,     motherHubStock,   slRxStock,   sitToMhWh,
         sourceWarehouseStock, sourceSufficiency,
         priority,           toBePlanned,      qtyAsPerCasePack,
         sourceHint
@@ -201,14 +202,26 @@
     });
   }
 
-  function getSourceHint(req, amb, mh) {
-    if (req <= 0)             return "No transfer needed";
-    if (amb >= req)           return "SL Ambient";
-    if (mh  >= req)           return "SL Mother Hub";
-    if (amb + mh >= req)      return "Split source";
-    if (amb > 0 && mh > 0)   return "Short: both sources";
-    if (amb > 0)              return "Short: SL Ambient only";
-    if (mh  > 0)              return "Short: SL Mother Hub only";
+  function getSourceHint(req, amb, mh, rx) {
+    if (req <= 0) return "No transfer needed";
+    if (amb >= req) return "SL Ambient";
+    if (mh >= req) return "SL Mother Hub";
+    if (rx >= req) return "SL Rx";
+    const available = [
+      ["SL Ambient", amb],
+      ["SL Mother Hub", mh],
+      ["SL Rx", rx]
+    ].filter((source) => source[1] > 0);
+    if (amb + mh + rx >= req) {
+      let remaining = req;
+      const selected = available.filter((source) => {
+        if (remaining <= 0) return false;
+        remaining -= source[1];
+        return true;
+      }).map((source) => source[0]);
+      return `Split: ${selected.join(" + ")}`;
+    }
+    if (available.length) return `Short: ${available.map((source) => source[0]).join(" + ")}`;
     return "No source stock";
   }
 
@@ -336,6 +349,7 @@
     <th>Status</th>
     <th class="numeric">SL<br>Ambient</th>
     <th class="numeric">MH<br>Stock</th>
+    <th class="numeric">SL<br>Rx</th>
     <th class="numeric">SIT<br>to MH</th>
     <th class="numeric">Source<br>Stock</th>
     <th>Sufficiency</th>
@@ -345,7 +359,7 @@
     <th>Priority</th>
   </tr>`;
 
-  // Detailed thead (23 cols) - toggled view
+  // Detailed thead (24 cols) - toggled view
   const DETAILED_THEAD = `<tr>
     <th class="col-sku">SKU / Product</th>
     <th>Brand</th>
@@ -363,6 +377,7 @@
     <th class="numeric">Req Qty</th>
     <th class="numeric">SL Ambient</th>
     <th class="numeric">MH Stock</th>
+    <th class="numeric">SL Rx</th>
     <th class="numeric">SIT to MH</th>
     <th class="numeric">Source Stock</th>
     <th>Sufficiency</th>
@@ -379,7 +394,7 @@
 
   function renderTable() {
     const rows = state.filteredRows;
-    const cols  = detailedView ? 23 : 15;
+    const cols  = detailedView ? 24 : 16;
     if (!rows.length) {
       els.tableBody.innerHTML = `<tr><td class="empty" colspan="${cols}">${getEmptyMessage()}</td></tr>`;
       return;
@@ -403,6 +418,7 @@
         <td class="numeric">${formatNumber(row.replenishmentQty, 0)}</td>
         <td class="numeric">${formatNumber(row.slAmbientStock, 0)}</td>
         <td class="numeric">${formatNumber(row.motherHubStock, 0)}</td>
+        <td class="numeric">${formatNumber(row.slRxStock, 0)}</td>
         <td class="numeric">${formatNumber(row.sitToMhWh, 0)}</td>
         <td class="numeric">${formatNumber(row.sourceWarehouseStock, 0)}</td>
         <td><span class="tag ${tagClass(row.sourceSufficiency)}">${row.sourceSufficiency}</span></td>
@@ -421,6 +437,7 @@
         <td><span class="tag ${tagClass(row.replenishmentStatus)}">${row.replenishmentStatus}</span></td>
         <td class="numeric">${formatNumber(row.slAmbientStock, 0)}</td>
         <td class="numeric">${formatNumber(row.motherHubStock, 0)}</td>
+        <td class="numeric">${formatNumber(row.slRxStock, 0)}</td>
         <td class="numeric">${formatNumber(row.sitToMhWh, 0)}</td>
         <td class="numeric">${formatNumber(row.sourceWarehouseStock, 0)}</td>
         <td><span class="tag ${tagClass(row.sourceSufficiency)}">${row.sourceSufficiency}</span></td>
@@ -680,7 +697,7 @@
       "Stock on Hand","Damaged Stock","Stock In Transfer","Last 30 days Sales","Last 7 days Sales",
       "Net Depot Stock","Daily Sales 30D","Daily Sales 7D","Daily Demand","Current DOI",
       "Replenishment Status","Open Orders","Replenishment Qty",
-      "SL Stock (Ambient)","MH Stock","SIT to MH-WH","Source Warehouse Stock",
+      "SL Stock (Ambient)","MH Stock","SL Rx Stock","SIT to MH-WH","Source Warehouse Stock",
       "Source Sufficiency","Source Hint","to be plan","Qty as per Case Pack","Priority"];
     const csvRows = rows.map((row) => [
       row.depotName, row.skuCode, row.productName, row.brand, row.casePack,
@@ -689,7 +706,7 @@
       row.dailySales30.toFixed(2), row.dailySales7.toFixed(2),
       row.dailyDemand.toFixed(2), row.currentDoi.toFixed(2),
       row.replenishmentStatus, row.openOrders, row.replenishmentQty,
-      row.slAmbientStock, row.motherHubStock, row.sitToMhWh, row.sourceWarehouseStock,
+      row.slAmbientStock, row.motherHubStock, row.slRxStock, row.sitToMhWh, row.sourceWarehouseStock,
       row.sourceSufficiency, row.sourceHint, row.toBePlanned, row.qtyAsPerCasePack, row.priority
     ]);
     const csv  = [headers, ...csvRows].map((line) => line.map(csvCell).join(",")).join("\n");
@@ -779,5 +796,3 @@
   ].forEach((input) => input.addEventListener("input", applyFilters));
 
 }());
-
-
